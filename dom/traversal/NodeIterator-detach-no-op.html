@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<!--
+Test adapted from https://mxr.mozilla.org/chromium/source/src/third_party/WebKit/LayoutTests/fast/dom/NodeIterator/detach-no-op.html
+-->
+<head>
+<link rel="help" href="http://dom.spec.whatwg.org/#dom-nodeiterator-detach">
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="traversal-support.js"></script>
+<link rel="stylesheet" href="/resources/testharness.css">
+<div id=log></div>
+</head>
+<body>
+<p>This test checks that NodeIterator.detach() is a no-op.</p>
+<script>
+test(function()
+{
+    var div = document.createElement('div');
+    div.id = 'a';
+    var b = document.createElement('div');
+    b.id = 'b';
+    div.appendChild(b);
+
+
+    var iterator = document.createNodeIterator(div);
+    assert_node(iterator.nextNode(), { type: Element, id: 'a' });
+    iterator.detach();
+    assert_node(iterator.nextNode(), { type: Element, id: 'b' });
+}, 'This test checks that NodeIterator.detach() is a no-op.');
+</script>
+</body>
+</html>

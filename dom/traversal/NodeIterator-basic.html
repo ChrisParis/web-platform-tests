@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<!--
+Test adapted from https://mxr.mozilla.org/chromium/source/src/third_party/WebKit/LayoutTests/fast/dom/NodeIterator/NodeIterator-basic.html
+-->
+<head>
+<title>NodeIterator: Basic test</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="traversal-support.js"></script>
+<link rel="stylesheet" href="/resources/testharness.css">
+<div id=log></div>
+</head>
+<body>
+<p>This test checks the basic functionality of NodeIterator.</p>
+<!-- Tree order: #a -> "b" -> #c -> #d -> "e" -> #f -> "g" -> <!--h--> -> "i" -> <!--j-->. -->
+<div id="a">b<div id="c"><div id="d">e<span id="f">g<!--h--></span>i</div><!--j--></div></div>
+<script>
+function check_iterator(iterator, root)
+{
+    assert_equals(iterator.toString(), '[object NodeIterator]');
+    assert_equals(iterator.root, root);
+    assert_equals(iterator.referenceNode, root);
+    assert_equals(iterator.pointerBeforeReferenceNode, true);
+    assert_equals(iterator.whatToShow, 0xFFFFFFFF);
+    assert_equals(iterator.filter, null);
+    assert_readonly(iterator, 'root');
+    assert_readonly(iterator, 'referenceNode');
+    assert_readonly(iterator, 'pointerBeforeReferenceNode');
+    assert_readonly(iterator, 'whatToShow');
+    assert_readonly(iterator, 'filter');
+}
+
+test(function ()
+{
+    var root = document.getElementById('a');
+    var iterator = document.createNodeIterator(root);
+    check_iterator(iterator, root);
+}, 'Construct a NodeIterator by document.createNodeIterator(root).');
+
+test(function ()
+{
+    var root = document.getElementById('a');
+    var iterator = document.createNodeIterator(root, undefined, undefined);
+    check_iterator(iterator, root);
+}, 'Construct a NodeIterator by document.createNodeIterator(root, undefined, undefined).');
+
+// |expectedNodes| should be an array of objects that can be passed to |assert_node|.
+function testIteratorForwardAndBackward(iterator, expectedNodes)
+{
+    assert_equals(iterator.referenceNode, iterator.root);
+    assert_equals(iterator.pointerBeforeReferenceNode, true);
+
+    // Going forward.
+    var index = 0;
+    var node;
+    while (node = iterator.nextNode()) {
+        assert_node(node, expectedNodes[index]);
+        assert_node(iterator.referenceNode, expectedNodes[index]);
+        assert_equals(iterator.pointerBeforeReferenceNode, false);
+        ++index;
+    }
+
+    assert_equals(index, expectedNodes.length);
+    assert_equals(node, null);
+    assert_node(iterator.referenceNode, expectedNodes[expectedNodes.length - 1]);
+    assert_equals(iterator.pointerBeforeReferenceNode, false);
+
+    // Going backward.
+    --index;
+    while (node = iterator.previousNode()) {
+        assert_node(node, expectedNodes[index]);
+        assert_node(iterator.referenceNode, expectedNodes[index]);
+        assert_equals(iterator.pointerBeforeReferenceNode, true);
+        --index;
+    }
+
+    assert_equals(index, -1);
+    assert_equals(node, null);
+    assert_node(iterator.referenceNode, expectedNodes[0]);
+    assert_equals(iterator.pointerBeforeReferenceNode, true);
+}
+
+var expectedAll = [
+    { type: Element, id: 'a' },
+    { type: Text, nodeValue: 'b' },
+    { type: Element, id: 'c' },
+    { type: Element, id: 'd' },
+    { type: Text, nodeValue: 'e' },
+    { type: Element, id: 'f' },
+    { type: Text, nodeValue: 'g' },
+    { type: Comment, nodeValue: 'h' },
+    { type: Text, nodeValue: 'i' },
+    { type: Comment, nodeValue: 'j' },
+];
+
+test(function ()
+{
+    var root = document.getElementById('a');
+    var iterator = document.createNodeIterator(root);
+    testIteratorForwardAndBackward(iterator, expectedAll);
+}, 'Iterate over all nodes forward then backward.');
+
+test(function ()
+{
+    var expected = [
+        { type: Element, id: 'a' },
+        { type: Element, id: 'c' },
+        { type: Element, id: 'd' },
+        { type: Element, id: 'f' },
+    ];
+    var root = document.getElementById('a');
+    var iterator = document.createNodeIterator(root, /*NodeFilter.*/SHOW_ELEMENT);
+    testIteratorForwardAndBackward(iterator, expected);
+}, 'Iterate over all elements forward then backward.');
+
+test(function ()
+{
+    var expected = [
+        { type: Text, nodeValue: 'b' },
+        { type: Text, nodeValue: 'e' },
+        { type: Text, nodeValue: 'g' },
+        { type: Text, nodeValue: 'i' },
+    ];
+    var root = document.getElementById('a');
+    var iterator = document.createNodeIterator(root, /*NodeFilter.*/SHOW_TEXT);
+    testIteratorForwardAndBackward(iterator, expected);
+}, 'Iterate over all text nodes forward then backward.');
+
+test(function ()
+{
+    var expected = [
+        { type: Comment, nodeValue: 'h' },
+        { type: Comment, nodeValue: 'j' },
+    ];
+    var root = document.getElementById('a');
+    var iterator = document.createNodeIterator(root, /*NodeFilter.*/SHOW_COMMENT);
+    testIteratorForwardAndBackward(iterator, expected);
+}, 'Iterate over all comment nodes forward then backward.');
+
+test(function ()
+{
+    var root = document.getElementById('a');
+    var iterator = document.createNodeIterator(root, 0);
+    assert_equals(iterator.referenceNode, iterator.root);
+    assert_equals(iterator.pointerBeforeReferenceNode, true);
+
+    assert_equals(iterator.nextNode(), null);
+    assert_equals(iterator.referenceNode, iterator.root);
+    assert_equals(iterator.pointerBeforeReferenceNode, true);
+
+    assert_equals(iterator.previousNode(), null);
+    assert_equals(iterator.referenceNode, iterator.root);
+    assert_equals(iterator.pointerBeforeReferenceNode, true);
+}, 'Test the behavior of NodeIterator when no nodes match with the given filter.');
+
+test(function ()
+{
+    var expected = [
+        { type: Text, nodeValue: 'e' },
+        { type: Element, id: 'f' },
+        { type: Comment, nodeValue: 'j' },
+    ];
+    var filter = function (node) {
+        if (node.nodeType === Node.ELEMENT_NODE && node.id === 'f' ||
+            node.nodeType === Node.TEXT_NODE && node.nodeValue === 'e' ||
+            node.nodeType === Node.COMMENT_NODE && node.nodeValue === 'j') {
+            return /*NodeFilter.*/FILTER_ACCEPT;
+        }
+        return /*NodeFilter.*/FILTER_REJECT;
+    };
+    var root = document.getElementById('a');
+    var iterator = document.createNodeIterator(root, /*NodeFilter.*/SHOW_ALL, filter);
+    testIteratorForwardAndBackward(iterator, expected);
+}, 'Test the behavior of NodeIterator when NodeFilter is specified.');
+
+test(function() {
+    var nodeIterator = document.createNodeIterator(document.body, 42, null);
+    assert_equals(nodeIterator.root, document.body);
+    assert_equals(nodeIterator.referenceNode, document.body);
+    assert_equals(nodeIterator.whatToShow, 42);
+    assert_equals(nodeIterator.filter, null);
+}, "Optional arguments to createNodeIterator should be optional (3 passed, null).");
+</script>
+</body>
+</html>

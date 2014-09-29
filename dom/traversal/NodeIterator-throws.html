@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<!--
+Test adapted from https://mxr.mozilla.org/chromium/source/src/third_party/WebKit/LayoutTests/fast/dom/NodeIterator/NodeIterator-basic.html
+-->
+<head>
+<title>NodeIterator: Throwing exceptions</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="traversal-support.js"></script>
+<link rel="stylesheet" href="/resources/testharness.css">
+<div id=log></div>
+</head>
+<body>
+<p>This test checks the exception-throwing functionality of NodeIterator.</p>
+<script>
+test(function ()
+{
+    assert_throws(new TypeError(), function () { document.createNodeIterator(); });
+    assert_throws(new TypeError(), function () { document.createNodeIterator(null); });
+    assert_throws(new TypeError(), function () { document.createNodeIterator(undefined); });
+    assert_throws(new TypeError(), function () { document.createNodeIterator(new Object()); });
+    assert_throws(new TypeError(), function () { document.createNodeIterator(1); });
+}, 'Give an invalid root node to document.createNodeIterator().');
+</script>
+</body>
+</html>
